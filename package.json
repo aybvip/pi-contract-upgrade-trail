@@ -1,0 +1,18 @@
+{
+  "name": "pi-contract-upgrade-trail",
+  "version": "0.1.0",
+  "description": "Read-only timeline builder for Soroban contract deployments on Pi. Reads a deployments manifest and flags wasmHash changes as upgrades.",
+  "type": "module",
+  "main": "upgrade-trail.mjs",
+  "bin": {
+    "pi-contract-upgrade-trail": "./upgrade-trail.mjs"
+  },
+  "scripts": {
+    "trail": "node upgrade-trail.mjs"
+  },
+  "keywords": ["pi", "soroban", "upgrade", "wasmHash", "audit", "read-only"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
