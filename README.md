@@ -54,8 +54,32 @@ whole tree, so a flat or nested manifest both work.
 | Not claimed | Why |
 |---|---|
 | That a single entry proves no earlier deployment | The manifest only records what the deploy script logged. Absence of an entry is not evidence of absence. |
-| That the on-chain contract still matches the last `wasmHash` | The live check is best-effort; the RPC does not expose a uniform "current wasm" query across all Pi versions. |
+| That the on-chain contract still matches the last `wasmHash` | **No measured RPC method returns a contract's current wasmHash.** `getContractData` is not implemented (`method not found`); `getLedgerEntries` exists but needs a base64 ledger key this tool does not build. |
 | That the deployer is a known or trusted party | On-chain data never proves venue or team ownership. |
+| That Mainnet was checked live | There is no public Soroban RPC on Mainnet: `rpc.mainnet.minepi.com` answers **HTTP 503** and serves a certificate that expired 2023-05-30. |
+
+## Tests
+
+```bash
+node --test test.mjs
+```
+
+14 checks, all offline:
+
+- a single entry reports `first_seen` and **0** upgrades
+- two entries with different `wasmHash` report exactly **1** `UPGRADE`
+- two entries with the same `wasmHash` report **0** upgrades
+- `contract_id` / `wasm_hash` / `deploy_tx` snake_case keys are accepted
+- nested manifests are walked to any depth
+- two contracts are grouped into separate timelines
+- an empty manifest reports `entries: 0` and exits `0`
+- invalid JSON and a missing file both exit `1`
+- `--offline` prints the skip notice and performs no network call
+- `--network mainnet` reports the measured HTTP 503 and performs no query
+- the live check never claims to have read a current `wasmHash`
+
+`--offline` exists so the timeline logic can be verified deterministically
+without depending on RPC availability.
 
 ## See also
 

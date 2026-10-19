@@ -8,6 +8,7 @@
     "pi-contract-upgrade-trail": "./upgrade-trail.mjs"
   },
   "scripts": {
+    "test": "node --test test.mjs",
     "trail": "node upgrade-trail.mjs"
   },
   "keywords": ["pi", "soroban", "upgrade", "wasmHash", "audit", "read-only"],

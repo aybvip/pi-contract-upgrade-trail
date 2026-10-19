@@ -20,7 +20,11 @@ import { readFileSync } from "node:fs";
 
 const RPCS = {
   testnet: "https://rpc.testnet.minepi.com",
-  mainnet: "https://api.mainnet.minepi.com",
+  // MEASURED 2026-10-19: no public Soroban JSON-RPC exists on Pi Mainnet.
+  // rpc.mainnet.minepi.com and soroban-rpc.mainnet.minepi.com answer HTTP 503
+  // and serve a certificate that expired 2023-05-30. api.mainnet.minepi.com
+  // is a REST (Horizon) API, not JSON-RPC.
+  mainnet: null,
 };
 
 async function rpc(rpcUrl, method, params = {}) {
@@ -40,10 +44,11 @@ function usage() {
     [
       "Pi Contract Upgrade Trail",
       "",
-      "  node upgrade-trail.mjs --manifest <deployments.json> [--network testnet]",
+      "  node upgrade-trail.mjs --manifest <deployments.json> [--network testnet] [--offline]",
       "",
       "Reads a deployments manifest and prints a per-contract timeline,",
-      "flagging wasmHash changes as upgrades.",
+      "flagging wasmHash changes as upgrades. --offline skips the live RPC check.",
+      "There is no public Soroban RPC on mainnet (measured 2026-10-19).",
     ].join("\n")
   );
 }
@@ -52,6 +57,7 @@ const { values } = parseArgs({
   options: {
     manifest: { type: "string" },
     network: { type: "string", default: "testnet" },
+    offline: { type: "boolean", default: false },
     help: { type: "boolean", default: false },
   },
 });
@@ -133,15 +139,26 @@ function flattenManifest(obj, out = []) {
     console.log("");
   }
 
-  // Attempt a live check of current wasmHash for each contract if RPC supports it
-  console.log("# Live check (best-effort)");
-  for (const [id] of byId) {
+  // Live check: no measured RPC method returns a contract's current wasmHash.
+  if (values.offline) {
+    console.log("# Live check skipped (--offline)");
+  } else if (!rpcUrl) {
+    console.log("# Live check skipped (no Soroban RPC on mainnet)");
+    console.log("  measured 2026-10-19: rpc.mainnet.minepi.com -> HTTP 503");
+    console.log("  api.mainnet.minepi.com is REST (Horizon), not JSON-RPC");
+    console.log("  no measured RPC method returns a contract's current wasmHash");
+  } else {
+    console.log("# Live check (best-effort)");
     try {
-      const info = await rpc(rpcUrl, "getContractData", { contractId: id, keyType: "ledgerKey", returnType: "bytes" });
-      console.log(`  ${id}: RPC responded (live check not fully supported yet)`);
+      const h = await rpc(rpcUrl, "getHealth");
+      console.log(`  rpc healthy: oldest=${h.oldestLedger} latest=${h.latestLedger} retention=${h.ledgerRetentionWindow}`);
     } catch (e) {
-      console.log(`  ${id}: live check unavailable (${e.message})`);
+      console.log(`  rpc unavailable: ${e.message}`);
     }
+    console.log("  NOTE: no measured RPC method returns a contract's current wasmHash.");
+    console.log("        `getContractData` is not implemented on this RPC (method not found);");
+    console.log("        `getLedgerEntries` exists but needs a base64 ledger key, which this");
+    console.log("        tool does not build. The manifest remains the source of truth here.");
   }
 
   console.log("");
