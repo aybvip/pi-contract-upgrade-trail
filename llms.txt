@@ -1,0 +1,53 @@
+# Pi Contract Upgrade Trail — llms.txt
+# A read-only, zero-dependency timeline builder for Soroban contract deployments
+# on Pi Network; flags every wasmHash change as an upgrade.
+
+> Soroban contracts CAN be upgraded by replacing the stored wasmHash. This tool
+> turns a deployments manifest into a per-contract history and surfaces hash
+> changes at a glance.
+
+## What it is
+- read-only, zero-dependency, Node (ESM), Node >= 18
+- upgrade-trail.mjs: the CLI (--manifest --network --offline)
+- test.mjs: 14 offline checks (node --test)
+- never writes; no database; no API keys
+
+## Why it exists
+Anyone auditing a Pi contract needs to answer: has this contract ever been
+changed, and when? A manifest of deployments makes that answerable; this tool
+makes the answer readable.
+
+## Input format
+Any nested JSON containing objects with contractId (or contract_id) and
+optionally wasmHash, deployTx, timestamp, name. The loader walks the whole tree,
+so flat or nested manifests both work. Snake_case keys are accepted.
+
+## Output shape
+Per contract: [n] hash=<wasmHash> tx=<deployTx> ts=<timestamp> <first_seen|UPGRADE>.
+Then per contract: recorded deployments, upgrades (hash changes).
+
+## Measured constraints (2026-10-19, protocol 28)
+- No measured RPC method returns a contract's CURRENT wasmHash.
+  getContractData is not implemented ("method not found"); getLedgerEntries
+  exists but needs a base64 ledger key this tool does not build.
+- There is no public Soroban RPC on Mainnet: rpc.mainnet.minepi.com answers
+  HTTP 503 and serves a certificate that expired 2023-05-30.
+
+## Usage
+- node upgrade-trail.mjs --manifest deployments/testnet.json
+- node upgrade-trail.mjs --manifest deployments/testnet.json --network mainnet
+- node upgrade-trail.mjs --manifest deployments/testnet.json --offline
+- node --test test.mjs
+Exit codes: 0 ok; 1 invalid JSON or missing file.
+--offline exists so the timeline logic is verifiable deterministically without
+depending on RPC availability.
+
+## Not claimed
+- that a single entry proves no earlier deployment (the manifest records only
+  what the deploy script logged; absence of an entry is not evidence of absence)
+- that the on-chain contract still matches the last wasmHash (no measured RPC
+  method returns it)
+- that the deployer is a known or trusted party (on-chain data never proves
+  venue or team ownership)
+- that Mainnet was checked live (there is no public Soroban RPC on Mainnet)
+- that Pi Network has adopted, reviewed or endorsed this
